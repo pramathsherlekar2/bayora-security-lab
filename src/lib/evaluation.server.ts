@@ -6,7 +6,7 @@ export type EvaluationInput = {
 
 export async function postEvaluation(input: EvaluationInput, apiKey: string) {
   const response = await fetch(
-    "https://2f60837b-ed41-4c2c-9198-fb731e9ca900-00-23hk4p8yseq33.sisko.replit.dev/api/evaluate",
+    "https://fast-api-backend--pramathsherleka.replit.app/api/evaluate",
     {
       method: "POST",
       headers: {
@@ -14,7 +14,7 @@ export async function postEvaluation(input: EvaluationInput, apiKey: string) {
         Accept: "application/json",
         "X-API-Key": apiKey,
       },
-      body: JSON.stringify(input),
+      body: JSON.stringify({ user_id: "demo-user", prompt: input.prompt, guardrails_active: Boolean(input.guardrails_active) }),
       signal: AbortSignal.timeout(60000),
       redirect: "error",
     },

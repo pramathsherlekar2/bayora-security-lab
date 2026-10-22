@@ -12,11 +12,21 @@ describe("Evaluation request", () => {
     }
     expect(fetchMock).toHaveBeenCalledTimes(2);
     for (const [url, options] of fetchMock.mock.calls) {
-      expect(url).toBe("https://2f60837b-ed41-4c2c-9198-fb731e9ca900-00-23hk4p8yseq33.sisko.replit.dev/api/evaluate");
+      expect(url).toBe("https://fast-api-backend--pramathsherleka.replit.app/api/evaluate");
       expect(options.method).toBe("POST");
       expect(options.headers["Content-Type"]).toBe("application/json");
       expect(options.headers["X-API-Key"]).toBe("test-only-key");
     }
+  });
+
+  it("always sends demo-user and the attack with a boolean guardrail value", async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => new Response("{}"));
+    vi.stubGlobal("fetch", fetchMock);
+    for (const guardrails_active of [true, false]) {
+      await postEvaluation({ user_id: "stored-user", prompt: "attackPrompt", guardrails_active }, "test-only-key");
+    }
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ user_id: "demo-user", prompt: "attackPrompt", guardrails_active: true });
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ user_id: "demo-user", prompt: "attackPrompt", guardrails_active: false });
   });
 
   it("preserves upstream errors while removing echoed credentials", async () => {
