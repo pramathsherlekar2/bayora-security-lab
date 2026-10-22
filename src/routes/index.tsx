@@ -90,13 +90,13 @@ function Index() {
   const run = async () => {
     const lines = prompt.split("\n").map((l) => l.trim()).filter(Boolean);
     if (!lines.length) { toast.error("Enter at least one adversarial prompt"); return; }
-    const base = import.meta.env['VITE_BACKEND_URL'] as string | undefined;
-    if (!base) { toast.error("Backend address is not configured"); return; }
+    const FALLBACK_BACKEND_URL = "https://2f60837b-ed41-4c2c-9198-fb731e9ca900-00-23hk4p8yseq33.sisko.replit.dev";
+    const base = (import.meta.env['VITE_BACKEND_URL'] as string | undefined) || FALLBACK_BACKEND_URL;
     setRunning(true);
     setResults(evaluate(prompt, enabled));
     const storedUid: string | null | undefined = localStorage.getItem("bayora_user_id");
     const user_id = storedUid || "demo-user";
-    const guardrails_active = RULES.filter((r) => enabled[r.id]).map((r) => r.id);
+    const guardrails_active = RULES.some((r) => enabled[r.id]);
     const url = `${base.replace(/\/$/, "")}/api/evaluate`;
     const out = await Promise.all(lines.map(async (attack): Promise<BackendResult> => {
       try {
