@@ -130,6 +130,7 @@ function Index() {
 
   const verify = async (i: number) => {
     const l = logs[i]; if (!l) return;
+    if (l.server) { toast[l.tampered ? "error" : "success"](l.tampered ? "Record edited locally — mismatch" : "Hash issued by backend audit log"); return; }
     const ok = (await sha256(l.prev + l.ts + l.event)) === l.hash && !l.tampered;
     toast[ok ? "success" : "error"](ok ? "Hash verified — record intact" : "Hash mismatch — record tampered");
   };
@@ -234,6 +235,35 @@ function Index() {
                     </div>
                   ))}
                 </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Backend Evaluation Results</CardTitle>
+            <CardDescription>{backendResults.length ? `${backendResults.length} prompt(s) evaluated` : "Run an evaluation to see live results from the backend."}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {backendResults.map((r, i) => (
+              <div key={i} className="space-y-2 rounded-lg border border-border p-3 text-sm">
+                <p className="font-mono text-xs text-muted-foreground">› {r.attack}</p>
+                {r.error ? (
+                  <p className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-destructive">{r.error}</p>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="rounded-md border border-border p-3">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Model output</span>
+                      <p className="mt-1 whitespace-pre-wrap">{r.output || "—"}</p>
+                    </div>
+                    <div className="rounded-md border border-border p-3">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">OWASP evaluation</span>
+                      <pre className="mt-1 whitespace-pre-wrap font-mono text-xs">{r.owasp || "—"}</pre>
+                    </div>
+                    <div className="md:col-span-2 font-mono text-xs text-muted-foreground break-all"><Hash className="mr-1 inline size-3" />{r.hash || "No audit hash returned"}</div>
+                  </div>
+                )}
               </div>
             ))}
           </CardContent>
