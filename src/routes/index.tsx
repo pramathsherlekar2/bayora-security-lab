@@ -93,7 +93,7 @@ function Index() {
     const base = import.meta.env.VITE_BACKEND_URL as string | undefined;
     if (!base) { toast.error("Backend address is not configured"); return; }
     setRunning(true);
-    setResults([]);
+    setResults(evaluate(prompt, enabled));
     let uid = localStorage.getItem("bayora_user_id");
     if (!uid) { uid = crypto.randomUUID(); localStorage.setItem("bayora_user_id", uid); }
     const guardrails_active = RULES.filter((r) => enabled[r.id]).map((r) => r.id);
