@@ -34,7 +34,7 @@ const RULES: Rule[] = [
   { id: "exfil", name: "Data exfiltration guard", desc: "Stops training-data / secret leakage", keywords: ["api key", "secret", "training data", "leak"] },
 ];
 
-type Result = { attack: string; baseline: string; defended: string; baseFail: boolean; defFail: boolean; rule?: string };
+type Result = { attack: string; baseline: string; defended: string; baseFail: boolean; defFail: boolean; rule?: string | undefined };
 type Log = { ts: string; event: string; hash: string; prev: string; tampered?: boolean };
 
 async function sha256(t: string) {
@@ -86,7 +86,7 @@ function Index() {
   useEffect(() => { append("Session initialized"); }, []); // eslint-disable-line
 
   const run = async () => {
-    if (!prompt.trim()) return toast.error("Enter at least one adversarial prompt");
+    if (!prompt.trim()) { toast.error("Enter at least one adversarial prompt"); return; }
     setRunning(true);
     await new Promise((r) => setTimeout(r, 900));
     const r = evaluate(prompt, enabled);
