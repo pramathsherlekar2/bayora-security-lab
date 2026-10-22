@@ -94,18 +94,25 @@ function Index() {
     if (!base) { toast.error("Backend address is not configured"); return; }
     setRunning(true);
     setResults(evaluate(prompt, enabled));
-    let uid = localStorage.getItem("bayora_user_id");
-    if (!uid) { uid = crypto.randomUUID(); localStorage.setItem("bayora_user_id", uid); }
+    const storedUid: string | null | undefined = localStorage.getItem("bayora_user_id");
+    const user_id = storedUid || "demo-user";
     const guardrails_active = RULES.filter((r) => enabled[r.id]).map((r) => r.id);
+    const url = `${base.replace(/\/$/, "")}/api/evaluate`;
     const out = await Promise.all(lines.map(async (attack): Promise<BackendResult> => {
       try {
-        const res = await fetch(`${base.replace(/\/$/, "")}/api/evaluate`, {
+        const res = await fetch(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: uid, prompt: attack, guardrails_active }),
+          mode: "cors",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ user_id, prompt: attack, guardrails_active }),
         });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) return { attack, error: data?.error ?? data?.detail ?? `Request failed (${res.status})` };
+        const raw = await res.text();
+        let data: any = {};
+        try { data = raw ? JSON.parse(raw) : {}; } catch { data = {}; }
+        if (!res.ok) {
+          console.error(`[Bayora] /api/evaluate failed (${res.status} ${res.statusText}):`, raw);
+          return { attack, error: data?.error ?? data?.detail ?? data?.message ?? (raw || `Request failed (${res.status})`) };
+        }
         const owasp = data.owasp_evaluation ?? data.owasp ?? data.evaluation ?? data.owasp_result;
         return {
           attack,
@@ -114,6 +121,7 @@ function Index() {
           hash: String(data.audit_hash ?? data.hash ?? data.audit_log_hash ?? data.audit_log?.hash ?? ""),
         };
       } catch (e) {
+        console.error(`[Bayora] /api/evaluate request error (likely CORS or network) for ${url}:`, e);
         return { attack, error: e instanceof Error ? e.message : "Network error" };
       }
     }));
