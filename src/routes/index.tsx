@@ -95,9 +95,8 @@ function Index() {
     if (!lines.length) { toast.error("Enter at least one adversarial prompt"); return; }
     setRunning(true);
     setResults(evaluate(prompt, enabled));
-    const storedUid: string | null | undefined = localStorage.getItem("bayora_user_id");
-    const user_id = storedUid || "demo-user";
-    const guardrails_active = RULES.some((r) => enabled[r.id]);
+    const user_id = "demo-user";
+    const guardrails_active = Boolean(RULES.some((r) => enabled[r.id]));
     const out = await Promise.all(lines.map(async (attack): Promise<BackendResult> => {
       try {
         const res = await requestEvaluation({ data: { user_id, prompt: attack, guardrails_active } });
