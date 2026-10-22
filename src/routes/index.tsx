@@ -90,7 +90,7 @@ function Index() {
   const run = async () => {
     const lines = prompt.split("\n").map((l) => l.trim()).filter(Boolean);
     if (!lines.length) { toast.error("Enter at least one adversarial prompt"); return; }
-    const base = import.meta.env.VITE_BACKEND_URL as string | undefined;
+    const base = import.meta.env['VITE_BACKEND_URL'] as string | undefined;
     if (!base) { toast.error("Backend address is not configured"); return; }
     setRunning(true);
     setResults(evaluate(prompt, enabled));
