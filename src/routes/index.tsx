@@ -86,15 +86,44 @@ function Index() {
   useEffect(() => { append("Session initialized"); }, []); // eslint-disable-line
 
   const run = async () => {
-    if (!prompt.trim()) { toast.error("Enter at least one adversarial prompt"); return; }
+    const lines = prompt.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (!lines.length) { toast.error("Enter at least one adversarial prompt"); return; }
+    const base = import.meta.env.VITE_BACKEND_URL as string | undefined;
+    if (!base) { toast.error("Backend address is not configured"); return; }
     setRunning(true);
-    await new Promise((r) => setTimeout(r, 900));
-    const r = evaluate(prompt, enabled);
-    setResults(r);
+    setResults([]);
+    let uid = localStorage.getItem("bayora_user_id");
+    if (!uid) { uid = crypto.randomUUID(); localStorage.setItem("bayora_user_id", uid); }
+    const guardrails_active = RULES.filter((r) => enabled[r.id]).map((r) => r.id);
+    const out = await Promise.all(lines.map(async (attack): Promise<BackendResult> => {
+      try {
+        const res = await fetch(`${base.replace(/\/$/, "")}/api/evaluate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: uid, prompt: attack, guardrails_active }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return { attack, error: data?.error ?? data?.detail ?? `Request failed (${res.status})` };
+        const owasp = data.owasp_evaluation ?? data.owasp ?? data.evaluation ?? data.owasp_result;
+        return {
+          attack,
+          output: String(data.output ?? data.response ?? data.model_output ?? ""),
+          owasp: owasp == null ? "" : typeof owasp === "string" ? owasp : JSON.stringify(owasp, null, 2),
+          hash: String(data.audit_hash ?? data.hash ?? data.audit_log_hash ?? data.audit_log?.hash ?? ""),
+        };
+      } catch (e) {
+        return { attack, error: e instanceof Error ? e.message : "Network error" };
+      }
+    }));
+    setBackendResults(out);
     setRunning(false);
-    const bf = r.filter((x) => x.baseFail).length, df = r.filter((x) => x.defFail).length;
-    await append(`Campaign on ${model}: ${r.length} prompts, ${bf} baseline fails, ${df} defended fails`);
-    toast.success(`Evaluation complete — ${bf - df} attacks blocked`);
+    const failed = out.filter((x) => x.error).length;
+    for (const r of out) if (r.hash) {
+      const ts = new Date().toISOString();
+      setLogs((l) => [{ ts, event: `Backend evaluation on ${model}: "${r.attack.slice(0, 40)}"`, hash: r.hash!, prev: l[0]?.hash ?? "0".repeat(64), server: true }, ...l]);
+    }
+    if (failed) toast.error(`${failed} of ${out.length} requests failed`);
+    else toast.success(`Evaluated ${out.length} prompt(s) on the backend`);
   };
 
   const verify = async (i: number) => {
