@@ -25,8 +25,10 @@ describe("Evaluation request", () => {
     for (const guardrails_active of [true, false]) {
       await postEvaluation({ user_id: "stored-user", prompt: "attackPrompt", guardrails_active }, "test-only-key");
     }
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ user_id: "demo-user", prompt: "attackPrompt", guardrails_active: true });
-    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ user_id: "demo-user", prompt: "attackPrompt", guardrails_active: false });
+    expect(fetchMock.mock.calls.map(([, options]) => JSON.parse(options.body))).toEqual([
+      { user_id: "demo-user", prompt: "attackPrompt", guardrails_active: true },
+      { user_id: "demo-user", prompt: "attackPrompt", guardrails_active: false },
+    ]);
   });
 
   it("preserves upstream errors while removing echoed credentials", async () => {
