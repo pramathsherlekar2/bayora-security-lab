@@ -35,7 +35,8 @@ const RULES: Rule[] = [
 ];
 
 type Result = { attack: string; baseline: string; defended: string; baseFail: boolean; defFail: boolean; rule?: string | undefined };
-type Log = { ts: string; event: string; hash: string; prev: string; tampered?: boolean };
+type BackendResult = { attack: string; output?: string; owasp?: string; hash?: string; error?: string };
+type Log = { ts: string; event: string; hash: string; prev: string; tampered?: boolean; server?: boolean };
 
 async function sha256(t: string) {
   const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t));
@@ -72,6 +73,7 @@ function Index() {
   const [enabled, setEnabled] = useState<Record<string, boolean>>({ inject: true, jail: true, pii: false, harm: true, exfil: false });
   const [results, setResults] = useState<Result[]>([]);
   const [running, setRunning] = useState(false);
+  const [backendResults, setBackendResults] = useState<BackendResult[]>([]);
   const [logs, setLogs] = useState<Log[]>([]);
 
   useEffect(() => { document.documentElement.classList.toggle("dark", dark); }, [dark]);
@@ -86,19 +88,49 @@ function Index() {
   useEffect(() => { append("Session initialized"); }, []); // eslint-disable-line
 
   const run = async () => {
-    if (!prompt.trim()) { toast.error("Enter at least one adversarial prompt"); return; }
+    const lines = prompt.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (!lines.length) { toast.error("Enter at least one adversarial prompt"); return; }
+    const base = import.meta.env['VITE_BACKEND_URL'] as string | undefined;
+    if (!base) { toast.error("Backend address is not configured"); return; }
     setRunning(true);
-    await new Promise((r) => setTimeout(r, 900));
-    const r = evaluate(prompt, enabled);
-    setResults(r);
+    setResults(evaluate(prompt, enabled));
+    let uid = localStorage.getItem("bayora_user_id");
+    if (!uid) { uid = crypto.randomUUID(); localStorage.setItem("bayora_user_id", uid); }
+    const guardrails_active = RULES.filter((r) => enabled[r.id]).map((r) => r.id);
+    const out = await Promise.all(lines.map(async (attack): Promise<BackendResult> => {
+      try {
+        const res = await fetch(`${base.replace(/\/$/, "")}/api/evaluate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: uid, prompt: attack, guardrails_active }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return { attack, error: data?.error ?? data?.detail ?? `Request failed (${res.status})` };
+        const owasp = data.owasp_evaluation ?? data.owasp ?? data.evaluation ?? data.owasp_result;
+        return {
+          attack,
+          output: String(data.output ?? data.response ?? data.model_output ?? ""),
+          owasp: owasp == null ? "" : typeof owasp === "string" ? owasp : JSON.stringify(owasp, null, 2),
+          hash: String(data.audit_hash ?? data.hash ?? data.audit_log_hash ?? data.audit_log?.hash ?? ""),
+        };
+      } catch (e) {
+        return { attack, error: e instanceof Error ? e.message : "Network error" };
+      }
+    }));
+    setBackendResults(out);
     setRunning(false);
-    const bf = r.filter((x) => x.baseFail).length, df = r.filter((x) => x.defFail).length;
-    await append(`Campaign on ${model}: ${r.length} prompts, ${bf} baseline fails, ${df} defended fails`);
-    toast.success(`Evaluation complete — ${bf - df} attacks blocked`);
+    const failed = out.filter((x) => x.error).length;
+    for (const r of out) if (r.hash) {
+      const ts = new Date().toISOString();
+      setLogs((l) => [{ ts, event: `Backend evaluation on ${model}: "${r.attack.slice(0, 40)}"`, hash: r.hash!, prev: l[0]?.hash ?? "0".repeat(64), server: true }, ...l]);
+    }
+    if (failed) toast.error(`${failed} of ${out.length} requests failed`);
+    else toast.success(`Evaluated ${out.length} prompt(s) on the backend`);
   };
 
   const verify = async (i: number) => {
     const l = logs[i]; if (!l) return;
+    if (l.server) { toast[l.tampered ? "error" : "success"](l.tampered ? "Record edited locally — mismatch" : "Hash issued by backend audit log"); return; }
     const ok = (await sha256(l.prev + l.ts + l.event)) === l.hash && !l.tampered;
     toast[ok ? "success" : "error"](ok ? "Hash verified — record intact" : "Hash mismatch — record tampered");
   };
@@ -203,6 +235,35 @@ function Index() {
                     </div>
                   ))}
                 </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Backend Evaluation Results</CardTitle>
+            <CardDescription>{backendResults.length ? `${backendResults.length} prompt(s) evaluated` : "Run an evaluation to see live results from the backend."}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {backendResults.map((r, i) => (
+              <div key={i} className="space-y-2 rounded-lg border border-border p-3 text-sm">
+                <p className="font-mono text-xs text-muted-foreground">› {r.attack}</p>
+                {r.error ? (
+                  <p className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-destructive">{r.error}</p>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="rounded-md border border-border p-3">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Model output</span>
+                      <p className="mt-1 whitespace-pre-wrap">{r.output || "—"}</p>
+                    </div>
+                    <div className="rounded-md border border-border p-3">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">OWASP evaluation</span>
+                      <pre className="mt-1 whitespace-pre-wrap font-mono text-xs">{r.owasp || "—"}</pre>
+                    </div>
+                    <div className="md:col-span-2 font-mono text-xs text-muted-foreground break-all"><Hash className="mr-1 inline size-3" />{r.hash || "No audit hash returned"}</div>
+                  </div>
+                )}
               </div>
             ))}
           </CardContent>
