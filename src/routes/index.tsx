@@ -78,7 +78,6 @@ function Index() {
 
   const append = async (event: string) => {
     const ts = new Date().toISOString();
-    setLogs((prev) => prev); // keep order
     const prevHash = logs[0]?.hash ?? "0".repeat(64);
     const hash = await sha256(prevHash + ts + event);
     setLogs((l) => [{ ts, event, hash, prev: l[0]?.hash ?? prevHash }, ...l]);
@@ -99,7 +98,7 @@ function Index() {
   };
 
   const verify = async (i: number) => {
-    const l = logs[i];
+    const l = logs[i]; if (!l) return;
     const ok = (await sha256(l.prev + l.ts + l.event)) === l.hash && !l.tampered;
     toast[ok ? "success" : "error"](ok ? "Hash verified — record intact" : "Hash mismatch — record tampered");
   };
@@ -170,7 +169,7 @@ function Index() {
                     <Label htmlFor={r.id} className="font-medium">{r.name}</Label>
                     <p className="text-xs text-muted-foreground">{r.desc}</p>
                   </div>
-                  <Switch id={r.id} checked={enabled[r.id]} onCheckedChange={(v) => { setEnabled({ ...enabled, [r.id]: v }); append(`Guardrail "${r.name}" ${v ? "enabled" : "disabled"}`); }} />
+                  <Switch id={r.id} checked={!!enabled[r.id]} onCheckedChange={(v) => { setEnabled({ ...enabled, [r.id]: v }); append(`Guardrail "${r.name}" ${v ? "enabled" : "disabled"}`); }} />
                 </div>
               ))}
             </CardContent>
