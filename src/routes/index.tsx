@@ -35,7 +35,8 @@ const RULES: Rule[] = [
 ];
 
 type Result = { attack: string; baseline: string; defended: string; baseFail: boolean; defFail: boolean; rule?: string | undefined };
-type Log = { ts: string; event: string; hash: string; prev: string; tampered?: boolean };
+type BackendResult = { attack: string; output?: string; owasp?: string; hash?: string; error?: string };
+type Log = { ts: string; event: string; hash: string; prev: string; tampered?: boolean; server?: boolean };
 
 async function sha256(t: string) {
   const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t));
@@ -72,6 +73,7 @@ function Index() {
   const [enabled, setEnabled] = useState<Record<string, boolean>>({ inject: true, jail: true, pii: false, harm: true, exfil: false });
   const [results, setResults] = useState<Result[]>([]);
   const [running, setRunning] = useState(false);
+  const [backendResults, setBackendResults] = useState<BackendResult[]>([]);
   const [logs, setLogs] = useState<Log[]>([]);
 
   useEffect(() => { document.documentElement.classList.toggle("dark", dark); }, [dark]);
