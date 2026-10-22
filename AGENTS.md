@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Red-team evaluations use a TanStack server function and a server-only request helper so the external API credential never enters the browser; keep the upstream URL fixed to prevent credential forwarding to arbitrary hosts.
