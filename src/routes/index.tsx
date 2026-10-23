@@ -35,23 +35,27 @@ function Dashboard() {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluationResult, setEvaluationResult] = useState<any>(null);
 
-  // Direct Supabase OAuth Sign-In Handlers
+  // OAuth Sign-In Handlers (managed auth flow, returns users to this page)
   const handleGoogleSignIn = async () => {
-    toast.info("Connecting to Google OAuth...");
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin }
-    });
-    if (error) toast.error(`Google Sign-In Error: ${error.message}`);
+    toast.info("Connecting to Google...");
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) {
+        toast.error(`Google Sign-In Error: ${result.error.message}`);
+        return;
+      }
+      if (result.redirected) return; // Browser is navigating to Google
+      toast.success("Signed in with Google");
+    } catch (error: any) {
+      toast.error(`Google Sign-In Error: ${error?.message || "Failed to start sign-in"}`);
+    }
   };
 
   const handleGitHubSignIn = async () => {
-    toast.info("Connecting to GitHub OAuth...");
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: { redirectTo: window.location.origin }
-    });
-    if (error) toast.error(`GitHub Sign-In Error: ${error.message}`);
+    // GitHub OAuth is not available with this app's managed auth backend.
+    toast.error("GitHub sign-in isn't available yet — please use Google.");
   };
 
   // Evaluation Handler targeting live Replit backend
