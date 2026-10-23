@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { createFileRoute } from "@tanstack/react-start";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { evaluateAttack } from "@/lib/evaluation.functions";
 import { lovable } from "@/integrations/lovable";
