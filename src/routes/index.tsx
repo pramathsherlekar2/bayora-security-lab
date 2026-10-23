@@ -81,7 +81,9 @@ function Dashboard() {
         setEvaluationResult(result);
         toast.success("Evaluation completed successfully!");
       } else {
-        toast.error("Evaluation failed. Please check backend connection.");
+        console.error("Evaluation backend error:", result?.status, result?.statusText, result?.raw);
+        setEvaluationResult(result);
+        toast.error(`Evaluation failed (${result?.status ?? "network error"}): ${result?.statusText || "Please check backend connection."}`);
       }
     } catch (error: any) {
       console.error("Evaluation error:", error);
