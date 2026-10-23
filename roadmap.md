@@ -1,0 +1,3 @@
+- [ ] Add executive metrics, theme toggle, and OWASP prompt templates.
+- [ ] Present parsed risk/severity results and session run history without changing the evaluation handler.
+- [ ] Test metrics and verify the dashboard flow and layouts.
