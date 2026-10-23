@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: bayora-security-lab
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
