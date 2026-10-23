@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createFileRoute } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { evaluateAttack } from "@/lib/evaluation.functions";
-import { supabase } from "@/integrations/supabase/client";
-import { 
+import { lovable } from "@/integrations/lovable";
+import {
   Moon, Sun, Shield, Swords, Play, Github, ShieldCheck, 
   ShieldAlert, Hash, Loader2 
 } from "lucide-react";
