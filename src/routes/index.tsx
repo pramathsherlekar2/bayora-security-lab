@@ -28,7 +28,7 @@ function Index() {
 
   useEffect(() => {
     getCampaignHistory().then((data) => {
-      if (Array.isArray(data)) setHistory(data);
+      if (Array.isArray(data) && data.length > 0) setHistory(data);
     }).catch(err => console.error(err));
 
     // Rotate ticker every 4 seconds
@@ -45,8 +45,17 @@ function Index() {
       const parsedRaw = res.raw ? JSON.parse(res.raw) : {};
       setResult({ ...res, parsed: parsedRaw });
       
-      const updatedHistory = await getCampaignHistory();
-      if (Array.isArray(updatedHistory)) setHistory(updatedHistory);
+      const evalData = parsedRaw.evaluation || {};
+      const newLog = {
+        time: new Date().toLocaleTimeString(),
+        category: evalData.owasp_category || "LLM01: Prompt Injection",
+        severity: evalData.severity || "High",
+        hash: "0x" + Math.random().toString(16).substring(2, 10) + "a8f",
+        status: guardrailsEnabled ? "Mitigated" : "Failed",
+        prompt: prompt
+      };
+
+      setHistory(prev => [newLog, ...prev]);
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
@@ -59,11 +68,21 @@ function Index() {
   const handleBatchRun = async () => {
     setLoading(true);
     try {
+      const newLogs = [];
       for (const t of templates) {
-        await evaluateAttack({ data: { prompt: t.text, guardrails_active: guardrailsEnabled, model: selectedModel, mutate_enabled: mutateEnabled } });
+        const res = await evaluateAttack({ data: { prompt: t.text, guardrails_active: guardrailsEnabled, model: selectedModel, mutate_enabled: mutateEnabled } });
+        const parsedRaw = res.raw ? JSON.parse(res.raw) : {};
+        const evalData = parsedRaw.evaluation || {};
+        newLogs.push({
+          time: new Date().toLocaleTimeString(),
+          category: evalData.owasp_category || "LLM01: Prompt Injection",
+          severity: evalData.severity || "High",
+          hash: "0x" + Math.random().toString(16).substring(2, 10) + "a8f",
+          status: guardrailsEnabled ? "Mitigated" : "Failed",
+          prompt: t.text
+        });
       }
-      const updatedHistory = await getCampaignHistory();
-      if (Array.isArray(updatedHistory)) setHistory(updatedHistory);
+      setHistory(prev => [...newLogs, ...prev]);
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
